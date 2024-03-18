@@ -2,131 +2,76 @@
 
 namespace Rappasoft\LaravelLivewireTables\Traits;
 
-use Rappasoft\LaravelLivewireTables\Events\ColumnsSelected;
-use Rappasoft\LaravelLivewireTables\Traits\Configuration\ColumnSelectConfiguration;
-use Rappasoft\LaravelLivewireTables\Traits\Helpers\ColumnSelectHelpers;
 use Rappasoft\LaravelLivewireTables\Views\Column;
 
+/**
+ * Trait WithColumnSelect.
+ */
 trait WithColumnSelect
 {
-    use ColumnSelectConfiguration,
-        ColumnSelectHelpers;
+    public bool $columnSelect = false;
+    public array $columnSelectEnabled = [];
+    public bool $usesSelect = false;
+    public bool $rememberColumnSelection = true;
 
-    public array $columnSelectColumns = ['setupRun' => false, 'selected' => [], 'deselected' => [], 'defaultdeselected' => []];
-
-    public array $selectedColumns = [];
-
-    public array $deselectedColumns = [];
-
-    public array $selectableColumns = [];
-
-    public array $defaultDeselectedColumns = [];
-
-    protected bool $columnSelectStatus = true;
-
-    protected bool $rememberColumnSelectionStatus = true;
-
-    protected bool $columnSelectHiddenOnMobile = false;
-
-    protected bool $columnSelectHiddenOnTablet = false;
-
-    public bool $excludeDeselectedColumnsFromQuery = false;
-
-    public bool $defaultDeselectedColumnsSetup = false;
-
-    protected function queryStringWithColumnSelect(): array
+    public function mountWithColumnSelect(): void
     {
-        if ($this->queryStringIsEnabled() && $this->columnSelectIsEnabled()) {
-            return [
-                'columns' => ['except' => null, 'history' => false, 'keep' => false, 'as' => $this->getQueryStringAlias().'-columns'],
-            ];
-        }
-
-        return [];
-    }
-
-    public function bootedWithColumnSelect(): void
-    {
-        $this->setupColumnSelect();
-    }
-
-    public function setupColumnSelect(): void
-    {
-
-        // If the column select is off, make sure to clear the session
-        if ($this->columnSelectIsDisabled() && session()->has($this->getColumnSelectSessionKey())) {
-            session()->forget($this->getColumnSelectSessionKey());
-
-            return;
-        }
-
-        if (empty($this->selectableColumns)) {
-            $this->selectableColumns = $this->getColumnsForColumnSelect();
-        }
-        $this->setupFirstColumnSelectRun();
-
-        $this->defaultVisibleColumnCount = count($this->selectableColumns);
-
-        // If remember selection is off, then clear the session
-        if ($this->rememberColumnSelectionIsDisabled()) {
+        if (! $this->rememberColumnSelection) {
             $this->forgetColumnSelectSession();
         }
 
+        // If the column select is off, make sure to clear the session
+        if (! $this->columnSelect && session()->has($this->getColumnSelectSessionKey())) {
+            session()->forget($this->getColumnSelectSessionKey());
+        }
+
+        // If any of the columns are user selected
+        if (collect($this->columns())->filter(fn ($column) => $column->isSelected())->count() > 0) {
+            $this->usesSelect = true;
+        }
+
+        // Get a list of visible default columns that are not excluded
+        $columns = collect($this->columns())
+            ->filter(function ($column) {
+                if ($this->usesSelect) {
+                    return $column->isVisible() && $column->isSelectable() && $column->isSelected();
+                }
+
+                return $column->isVisible() && $column->isSelectable();
+            })
+            ->map(fn ($column) => $column->column())
+            ->values()
+            ->toArray();
+
         // Set to either the default set or what is stored in the session
-        $this->selectedColumns = (count($this->selectedColumns) > 1) ?
-            $this->selectedColumns :
-            session()->get($this->getColumnSelectSessionKey(), $this->getDefaultVisibleColumns());
+        $this->columnSelectEnabled = session()->get($this->getColumnSelectSessionKey(), $columns);
 
         // Check to see if there are any excluded that are already stored in the enabled and remove them
-        foreach ($this->getColumns() as $column) {
-            if (! $column->isSelectable() && ! in_array($column->getSlug(), $this->selectedColumns, true)) {
-                $this->selectedColumns[] = $column->getSlug();
-                session([$this->getColumnSelectSessionKey() => $this->selectedColumns]);
+        foreach ($this->columns() as $column) {
+            if (! $column->isSelectable() && ! in_array($column->column(), $this->columnSelectEnabled, true)) {
+                $this->columnSelectEnabled[] = $column->column();
+                session([$this->getColumnSelectSessionKey() => $this->columnSelectEnabled]);
             }
         }
-        $this->visibleColumnCount = count($this->selectedColumns);
     }
 
-    protected function setupFirstColumnSelectRun(): void
+    public function updatedColumnSelectEnabled(): void
     {
-        if (! $this->columnSelectColumns['setupRun']) {
-            $this->columnSelectColumns['deselected'] = $this->columnSelectColumns['defaultdeselected'] = $this->setDefaultDeselectedColumns();
-            $this->columnSelectColumns['setupRun'] = true;
-        }
-
+        session([$this->getColumnSelectSessionKey() => $this->columnSelectEnabled]);
     }
 
-    public function selectAllColumns(): void
+    public function isColumnSelectEnabled($column): bool
     {
-        $this->selectedColumns = [];
-        foreach ($this->getColumns() as $column) {
-            $this->selectedColumns[] = $column->getSlug();
-        }
-        $this->forgetColumnSelectSession();
-        event(new ColumnsSelected($this->getColumnSelectSessionKey(), $this->selectedColumns));
+        return in_array($column instanceof Column ? $column->column() : $column, $this->columnSelectEnabled, true);
     }
 
-    public function deselectAllColumns(): void
+    private function forgetColumnSelectSession(): void
     {
-        $this->selectedColumns = [];
-        session([$this->getColumnSelectSessionKey() => []]);
-        event(new ColumnsSelected($this->getColumnSelectSessionKey(), $this->selectedColumns));
+        session()->forget($this->getColumnSelectSessionKey());
     }
 
-    public function updatedSelectedColumns(): void
+    private function getColumnSelectSessionKey(): string
     {
-        // The query string isn't needed if it's the same as the default
-        session([$this->getColumnSelectSessionKey() => $this->selectedColumns]);
-        event(new ColumnsSelected($this->getColumnSelectSessionKey(), $this->selectedColumns));
-    }
-
-    public function allVisibleColumnsAreSelected(): bool
-    {
-        return count($this->selectedColumns) === count($this->getDefaultVisibleColumns());
-    }
-
-    public function allSelectedColumnsAreVisibleByDefault(): bool
-    {
-        return count($this->selectedColumns) === count($this->getDefaultVisibleColumns());
+        return $this->tableName.'-columnSelectEnabled';
     }
 }

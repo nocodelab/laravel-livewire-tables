@@ -2,35 +2,20 @@
 
 namespace Rappasoft\LaravelLivewireTables\Traits;
 
-use Rappasoft\LaravelLivewireTables\Traits\Configuration\FooterConfiguration;
-use Rappasoft\LaravelLivewireTables\Traits\Helpers\FooterHelpers;
-
+/**
+ * Trait WithFooter.
+ */
 trait WithFooter
 {
-    use FooterConfiguration,
-        FooterHelpers;
+    public bool $useHeaderAsFooter = false;
+    public bool $customFooter = false;
 
-    protected bool $footerStatus = true;
-
-    protected bool $useHeaderAsFooterStatus = false;
-
-    protected bool $columnsWithFooter = false;
-
-    protected $footerTrAttributesCallback;
-
-    protected $footerTdAttributesCallback;
-
-    public function setupFooter(): void
+    public function mountWithFooter(): void
     {
-        foreach ($this->getColumns() as $column) {
+        foreach ($this->columns() as $column) {
             if ($column->hasFooter()) {
-                $this->columnsWithFooter = true;
+                $this->customFooter = true;
             }
         }
-    }
-
-    public function renderingWithFooter(): void
-    {
-        $this->setupFooter();
     }
 }

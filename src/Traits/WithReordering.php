@@ -2,97 +2,109 @@
 
 namespace Rappasoft\LaravelLivewireTables\Traits;
 
-use Rappasoft\LaravelLivewireTables\Traits\Configuration\ReorderingConfiguration;
-use Rappasoft\LaravelLivewireTables\Traits\Helpers\ReorderingHelpers;
-
+/**
+ * Trait WithReordering.
+ */
 trait WithReordering
 {
-    use ReorderingConfiguration,
-        ReorderingHelpers;
+    public bool $reorderEnabled = false;
+    public bool $reordering = false;
+    public string $reorderingMethod = 'reorder';
 
-    public bool $reorderStatus = false;
-
-    public bool $currentlyReorderingStatus = false;
-
-    public bool $hideReorderColumnUnlessReorderingStatus = false;
-
-    public bool $reorderDisplayColumn = false;
-
-    public string $reorderMethod = 'reorder';
-
-    public string $defaultReorderColumn = 'sort';
-
-    public string $defaultReorderDirection = 'asc';
-
-    public array $orderedItems = [];
-
-    public function setupReordering(): void
+    public function mountWithReordering(): void
     {
-        if ($this->reorderIsDisabled()) {
-            return;
-        }
-
-        // If reordering is disabled but the page has a reorder session, remove it
-        if (! $this->reorderIsEnabled() && $this->hasReorderingSession()) {
+        if (! $this->reorderEnabled && $this->hasReorderingSession()) {
             $this->forgetReorderingSession();
         }
-
-        $this->restartReorderingIfNecessary();
-    }
-
-    public function enablePaginatedReordering(): void
-    {
-
     }
 
     public function enableReordering(): void
     {
-        //$this->enablePaginatedReordering();
-
         $this->setReorderingSession();
-        $this->setReorderingBackup();
-        $this->resetReorderFields();
-        $this->reorderStatus = $this->currentlyReorderingStatus = $this->reorderDisplayColumn = true;
-
+        $this->setReorderingProperties();
     }
 
     public function disableReordering(): void
     {
-
         $this->forgetReorderingSession();
-        $this->setCurrentlyReorderingDisabled();
-        $this->getReorderingBackup();
-        $this->currentlyReorderingStatus = $this->reorderDisplayColumn = false;
-
+        $this->setReorderingProperties();
     }
 
-    private function restartReorderingIfNecessary(): void
+    private function setReorderingSession(): void
     {
-        // If the page loads with the session, enable reordering
-        // Also called in ComponentUtilities@hydrate
-        if ($this->reorderIsEnabled() && $this->hasReorderingSession()) {
-            $this->setCurrentlyReorderingEnabled();
-            $this->resetReorderFields();
+        session([$this->getReorderingSessionKey() => true]);
+    }
+
+    private function forgetReorderingSession(): void
+    {
+        session()->forget($this->getReorderingSessionKey());
+    }
+
+    private function hasReorderingSession(): bool
+    {
+        return session()->has($this->getReorderingSessionKey());
+    }
+
+    private function setReorderingProperties(): void
+    {
+        if ($this->hasReorderingSession()) {
+            $this->reordering = true;
+
+            $this->setReorderingBackup();
+
+            $this->bulkActionsEnabled = false;
+            $this->selectPage = false;
+            $this->selectAll = false;
+            $this->selected = [];
+            $this->showSorting = false;
+            $this->sortingEnabled = false;
+            $this->filtersEnabled = false;
+            $this->sorts = [];
+            $this->filters = [];
+            $this->showPagination = false;
+            $this->showPerPage = false;
+            $this->showSearch = false;
+            $this->perPageAll = true;
+            $this->perPage = -1;
+            $this->secondaryHeader = false;
+            $this->customFooter = false;
+            $this->useHeaderAsFooter = false;
+            $this->resetPage($this->pageName());
+        } else {
+            $this->reordering = false;
+
+            $this->reset([
+                'bulkActionsEnabled',
+                'selectPage',
+                'selectAll',
+                'selected',
+                'showSorting',
+                'sortingEnabled',
+                'filtersEnabled',
+                'sorts',
+                'filters',
+                'showPagination',
+                'showPerPage',
+                'showSearch',
+                'perPageAll',
+                'perPage',
+                'secondaryHeader',
+                'customFooter',
+                'useHeaderAsFooter',
+            ]);
+
+            $this->getReorderingBackup();
         }
     }
 
-    private function resetReorderFields(): void
+    private function getReorderingSessionKey(): string
     {
-        $this->{$this->getTableName()} = [];
-        $this->setSortingPillsDisabled();
-        $this->setSortingDisabled();
-        $this->setPaginationDisabled();
-        $this->setPerPageVisibilityDisabled();
-        $this->setPerPageAccepted([-1]);
-        $this->setPerPage(-1);
-        $this->setSearchDisabled();
-        $this->setBulkActionsDisabled();
-        $this->clearSelected();
-        $this->setFiltersDisabled();
-        $this->setSecondaryHeaderDisabled();
-        $this->setFooterDisabled();
-        $this->setCollapsingColumnsDisabled();
-        $this->resetComputedPage();
+        return $this->tableName.'-reordering';
+    }
+
+    private function getReorderingBackupSessionKey(): string
+    {
+        return $this->tableName.'-reordering-backup';
     }
 
     private function setReorderingBackup(): void
@@ -100,78 +112,52 @@ trait WithReordering
         if (session()->has($this->getReorderingBackupSessionKey())) {
             session()->forget($this->getReorderingBackupSessionKey());
         }
-        session([$this->getReorderingBackupSessionKey() => $this->getTableStateToArray()]);
-    }
 
-    protected function getTableStateToArray(): array
-    {
-        return [
-            $this->getTableName() => $this->{$this->getTableName()},
+        session([$this->getReorderingBackupSessionKey() => [
+            'bulkActionsEnabled' => $this->bulkActionsEnabled,
+            'selectPage' => $this->selectPage,
+            'selectAll' => $this->selectAll,
+            'selected' => $this->selected,
+            'showSorting' => $this->showSorting,
+            'sortingEnabled' => $this->sortingEnabled,
+            'filtersEnabled' => $this->filtersEnabled,
             'sorts' => $this->sorts,
-            'search' => $this->search,
-            'selectedColumns' => $this->selectedColumns,
-            'sortingPillsStatus' => $this->getSortingPillsStatus(),
-            'sortingStatus' => $this->getSortingStatus(),
-            'paginationStatus' => $this->getPaginationStatus(),
-            'perPageVisibilityStatus' => $this->getPerPageVisibilityStatus(),
-            'perPageAccepted' => $this->getPerPageAccepted(),
-            'perPage' => $this->getPerPage(),
-            'page' => $this->paginators[$this->getComputedPageName()] ?? 1,
-            'searchStatus' => $this->getSearchStatus(),
-            'bulkActionsStatus' => $this->getBulkActionsStatus(),
-            'selected' => $this->getSelected(),
-            'selectAllStatus' => $this->getSelectAllStatus(),
-            'filtersStatus' => $this->getFiltersStatus(),
-            'secondaryHeaderStatus' => $this->getSecondaryHeaderStatus(),
-            'footerStatus' => $this->getFooterStatus(),
-            'collapsingColumnsStatus' => $this->hasCollapsingColumns(),
-        ];
-    }
-
-    protected function restoreStateFromArray(array $tableState): void
-    {
-        $this->{$this->getTableName()} = $tableState[$this->getTableName()];
-        $this->sorts = $tableState['sorts'];
-        $this->search = $tableState['search'];
-        $this->selectedColumns = $tableState['selectedColumns'];
-        $this->setSortingPillsStatus($tableState['sortingPillsStatus']);
-        $this->setSortingStatus($tableState['sortingStatus']);
-        $this->setPaginationStatus($tableState['paginationStatus']);
-        $this->setPerPageVisibilityStatus($tableState['perPageVisibilityStatus']);
-        $this->setPerPageAccepted($tableState['perPageAccepted']);
-        $this->setPerPage($tableState['perPage']);
-        $this->setPage($tableState['page'], $this->getComputedPageName());
-        $this->setSearchStatus($tableState['searchStatus']);
-        $this->setBulkActionsStatus($tableState['bulkActionsStatus']);
-        $this->setSelected($tableState['selected']);
-        $this->setSelectAllStatus($tableState['selectAllStatus']);
-        $this->setFiltersStatus($tableState['filtersStatus']);
-        $this->setSecondaryHeaderStatus($tableState['secondaryHeaderStatus']);
-        $this->setFooterStatus($tableState['footerStatus']);
-        $this->setCollapsingColumnsStatus($tableState['collapsingColumnsStatus']);
-
+            'filters' => $this->filters,
+            'showPagination' => $this->showPagination,
+            'showPerPage' => $this->showPerPage,
+            'showSearch' => $this->showSearch,
+            'perPageAll' => $this->perPageAll,
+            'perPage' => $this->perPage,
+            'page' => $this->page,
+            'secondaryHeader' => $this->secondaryHeader,
+            'customFooter' => $this->customFooter,
+            'useHeaderAsFooter' => $this->useHeaderAsFooter,
+        ]]);
     }
 
     private function getReorderingBackup(): void
     {
-        // TODO: Why won't secondary header and footer come back?
         if (session()->has($this->getReorderingBackupSessionKey())) {
-            $this->restoreStateFromArray(session()->get($this->getReorderingBackupSessionKey()));
+            $save = session()->get($this->getReorderingBackupSessionKey());
+            $this->bulkActionsEnabled = $save['bulkActionsEnabled'] ?? false;
+            $this->selectPage = $save['selectPage'] ?? false;
+            $this->selectAll = $save['selectAll'] ?? false;
+            $this->selected = $save['selected'] ?? [];
+            $this->showSorting = $save['showSorting'] ?? false;
+            $this->sortingEnabled = $save['sortingEnabled'] ?? false;
+            $this->filtersEnabled = $save['filtersEnabled'] ?? false;
+            $this->sorts = $save['sorts'] ?? [];
+            $this->filters = $save['filters'] ?? [];
+            $this->showPagination = $save['showPagination'] ?? false;
+            $this->showPerPage = $save['showPerPage'] ?? false;
+            $this->showSearch = $save['showSearch'] ?? false;
+            $this->perPageAll = $save['perPageAll'] ?? true;
+            $this->perPage = $save['perPage'] ?? -1;
+            $this->page = $save['page'] ?? 1;
+            $this->secondaryHeader = $save['secondaryHeader'] ?? false;
+            $this->customFooter = $save['customFooter'] ?? false;
+            $this->useHeaderAsFooter = $save['useHeaderAsFooter'] ?? false;
             session()->forget($this->getReorderingBackupSessionKey());
         }
-        $this->currentlyReorderingStatus = $this->reorderDisplayColumn = false;
-
-    }
-
-    public function storeReorder(array $rows = []): void
-    {
-        $this->{$this->getReorderMethod()}($rows);
-        $this->forgetReorderingSession();
-        $this->getReorderingBackup();
-    }
-
-    public function renderingWithReordering(): void
-    {
-        $this->setupReordering();
     }
 }

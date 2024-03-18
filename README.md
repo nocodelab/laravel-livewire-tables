@@ -4,10 +4,6 @@
 [![Styling](https://github.com/rappasoft/laravel-livewire-tables/actions/workflows/php-cs-fixer.yml/badge.svg)](https://github.com/rappasoft/laravel-livewire-tables/actions/workflows/php-cs-fixer.yml)
 [![Tests](https://github.com/rappasoft/laravel-livewire-tables/actions/workflows/run-tests.yml/badge.svg)](https://github.com/rappasoft/laravel-livewire-tables/actions/workflows/run-tests.yml)
 [![Total Downloads](https://img.shields.io/packagist/dt/rappasoft/laravel-livewire-tables.svg?style=flat-square)](https://packagist.org/packages/rappasoft/laravel-livewire-tables)
-[![codecov](https://codecov.io/gh/rappasoft/laravel-livewire-tables/graph/badge.svg?token=1B9VKO9KWG)](https://codecov.io/gh/rappasoft/laravel-livewire-tables)
-![PHP Stan Level 5](https://img.shields.io/badge/PHPStan-level%205-brightgreen.svg?style=flat)
-
-### Enjoying this package? [Buy me a beer 🍺](https://www.buymeacoffee.com/rappasoft)
 
 A dynamic Laravel Livewire component for data tables.
 
@@ -24,8 +20,6 @@ You can install the package via composer:
 ``` bash
 composer require rappasoft/laravel-livewire-tables
 ```
-
-You must also have [Alpine.js](https://alpinejs.dev) version 3 or greater installed and available to the component.
 
 ## Documentation and Usage Instructions
 
@@ -45,27 +39,41 @@ use Rappasoft\LaravelLivewireTables\Views\Column;
 
 class UsersTable extends DataTableComponent
 {
-    protected $model = User::class;
-
-    public function configure(): void
-    {
-        $this->setPrimaryKey('id');
-    }
 
     public function columns(): array
     {
         return [
-            Column::make('ID', 'id')
-                ->sortable(),
             Column::make('Name')
+                ->sortable()
+                ->searchable(),
+            Column::make('E-mail', 'email')
+                ->sortable()
+                ->searchable(),
+            Column::make('Verified', 'email_verified_at')
                 ->sortable(),
         ];
     }
-}
 
+    public function query(): Builder
+    {
+        return User::query();
+    }
+}
 ```
 
-### [See advanced example](https://rappasoft.com/docs/laravel-livewire-tables/v2/examples/advanced-example)
+### [See advanced example](https://rappasoft.com/docs/laravel-livewire-tables/v1/usage/advanced-example-table)
+
+## To-do/Roadmap
+
+- [x] Bootstrap 4 Template
+- [x] Bootstrap 5 Template
+- [x] Sorting By Relationships
+- [x] User Column Selection  
+- [x] Drag & Drop (beta)
+- [x] Column Search
+- [x] Greater Configurability
+- [ ] Collection/Query Support  
+- [ ] Test Suite (WIP)
 
 ## Testing
 
@@ -88,8 +96,7 @@ Please e-mail anthony@rappasoft.com to report any security vulnerabilities inste
 ## Credits
 
 - [Anthony Rappa](https://github.com/rappasoft)
-- [Joe McElwee](https://github.com/lrljoe)
-- [All Contributors](./CONTRIBUTORS.md)
+- [All Contributors](../../contributors)
 
 ## License
 

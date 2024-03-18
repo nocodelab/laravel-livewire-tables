@@ -2,32 +2,161 @@
 
 namespace Rappasoft\LaravelLivewireTables\Views;
 
-use Illuminate\Support\Str;
-use Rappasoft\LaravelLivewireTables\Views\Traits\IsFilter;
-
-abstract class Filter
+/**
+ * Class Filter.
+ */
+class Filter
 {
-    use IsFilter;
+    public const TYPE_DATE = 'date';
 
-    protected string $view = '';
+    public const TYPE_DATETIME_LOCAL = 'datetime-local';
 
-    public function __construct(string $name, ?string $key = null)
+    public const TYPE_SELECT = 'select';
+
+    public const TYPE_MULTISELECT = 'multiselect';
+
+    /**
+     * @var string
+     */
+    public string $name;
+
+    /**
+     * @var string
+     */
+    public string $type;
+
+    /**
+     * @var array
+     */
+    public array $options = [];
+
+    /**
+     * @var array
+     */
+    public array $attributes = [];
+
+    /**
+     * @param  string  $name
+     * @param  array|null  $attributes
+     */
+    public function __construct(string $name, ?array $attributes = [])
     {
         $this->name = $name;
-
-        if ($key) {
-            $this->key = $key;
-        } else {
-            $this->key = Str::snake($name);
-        }
-        $this->config([]);
+        $this->attributes = $attributes;
     }
 
     /**
-     * @return static
+     * @param  string  $name
+     * @param  array|null  $attributes
+     *
+     * @return Filter
      */
-    public static function make(string $name, ?string $key = null): Filter
+    public static function make(string $name, ?array $attributes = []): Filter
     {
-        return new static($name, $key);
+        return new static($name, $attributes);
+    }
+
+    /**
+     * @param array $options
+     *
+     * @return $this
+     */
+    public function select(array $options = []): Filter
+    {
+        $this->type = self::TYPE_SELECT;
+
+        $this->options = $options;
+
+        return $this;
+    }
+
+    /**
+     * @param array $options
+     *
+     * @return $this
+     */
+    public function multiSelect(array $options = []): Filter
+    {
+        $this->type = self::TYPE_MULTISELECT;
+
+        $this->options = $options;
+
+        return $this;
+    }
+
+    /**
+     * @param array $options
+     *
+     * @return $this
+     */
+    public function date(array $options = []): Filter
+    {
+        $this->type = self::TYPE_DATE;
+
+        $this->options = $options;
+
+        return $this;
+    }
+
+    /**
+     * @param array $options
+     *
+     * @return $this
+     */
+    public function datetime(array $options = []): Filter
+    {
+        $this->type = self::TYPE_DATETIME_LOCAL;
+
+        $this->options = $options;
+
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function name(): string
+    {
+        return $this->name;
+    }
+
+    /**
+     * @return array
+     */
+    public function options(): array
+    {
+        return $this->options;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isSelect(): bool
+    {
+        return $this->type === self::TYPE_SELECT;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isMultiSelect(): bool
+    {
+        return $this->type === self::TYPE_MULTISELECT;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isDate(): bool
+    {
+        return $this->type === self::TYPE_DATE;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isDatetime(): bool
+    {
+        return $this->type === self::TYPE_DATETIME_LOCAL;
     }
 }

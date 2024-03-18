@@ -2,79 +2,53 @@
 
 namespace Rappasoft\LaravelLivewireTables;
 
-use Illuminate\Foundation\Console\AboutCommand;
-use Illuminate\Support\ServiceProvider;
-use Livewire\ComponentHookRegistry;
+use Illuminate\Support\Facades\Blade;
 use Rappasoft\LaravelLivewireTables\Commands\MakeCommand;
-use Rappasoft\LaravelLivewireTables\Features\AutoInjectRappasoftAssets;
-use Rappasoft\LaravelLivewireTables\Mechanisms\RappasoftFrontendAssets;
+use Spatie\LaravelPackageTools\Package;
+use Spatie\LaravelPackageTools\PackageServiceProvider;
 
-class LaravelLivewireTablesServiceProvider extends ServiceProvider
+/**
+ * Class LaravelLivewireTablesServiceProvider.
+ */
+class LaravelLivewireTablesServiceProvider extends PackageServiceProvider
 {
-    public function boot(): void
+    public function bootingPackage(): void
     {
+        Blade::component('livewire-tables::tailwind.components.table.table', 'livewire-tables::table');
+        Blade::component('livewire-tables::tailwind.components.table.heading', 'livewire-tables::table.heading');
+        Blade::component('livewire-tables::tailwind.components.table.footer', 'livewire-tables::table.footer');
+        Blade::component('livewire-tables::tailwind.components.table.row', 'livewire-tables::table.row');
+        Blade::component('livewire-tables::tailwind.components.table.cell', 'livewire-tables::table.cell');
 
-        AboutCommand::add('Rappasoft Laravel Livewire Tables', fn () => ['Version' => '3.2.4']);
+        Blade::component('livewire-tables::tailwind.components.table.table', 'livewire-tables::tw.table');
+        Blade::component('livewire-tables::tailwind.components.table.heading', 'livewire-tables::tw.table.heading');
+        Blade::component('livewire-tables::tailwind.components.table.footer', 'livewire-tables::tw.table.footer');
+        Blade::component('livewire-tables::tailwind.components.table.row', 'livewire-tables::tw.table.row');
+        Blade::component('livewire-tables::tailwind.components.table.cell', 'livewire-tables::tw.table.cell');
 
-        $this->mergeConfigFrom(
-            __DIR__.'/../config/livewire-tables.php', 'livewire-tables'
-        );
+        Blade::component('livewire-tables::bootstrap-4.components.table.table', 'livewire-tables::bs4.table');
+        Blade::component('livewire-tables::bootstrap-4.components.table.heading', 'livewire-tables::bs4.table.heading');
+        Blade::component('livewire-tables::bootstrap-4.components.table.footer', 'livewire-tables::bs4.table.footer');
+        Blade::component('livewire-tables::bootstrap-4.components.table.row', 'livewire-tables::bs4.table.row');
+        Blade::component('livewire-tables::bootstrap-4.components.table.cell', 'livewire-tables::bs4.table.cell');
 
-        // Load Default Translations
-        $this->loadJsonTranslationsFrom(
-            __DIR__.'/../resources/lang'
-        );
-
-        // Override if Published
-        $this->loadJsonTranslationsFrom(
-            $this->app->langPath('vendor/livewire-tables')
-        );
-
-        $this->loadViewsFrom(__DIR__.'/../resources/views', 'livewire-tables');
-
-        $this->consoleCommands();
-
-        if (config('livewire-tables.inject_core_assets_enabled') || config('livewire-tables.inject_third_party_assets_enabled') || config('livewire-tables.enable_blade_directives')) {
-            (new RappasoftFrontendAssets)->boot();
-        }
-
+        Blade::component('livewire-tables::bootstrap-5.components.table.table', 'livewire-tables::bs5.table');
+        Blade::component('livewire-tables::bootstrap-5.components.table.heading', 'livewire-tables::bs5.table.heading');
+        Blade::component('livewire-tables::bootstrap-5.components.table.footer', 'livewire-tables::bs5.table.footer');
+        Blade::component('livewire-tables::bootstrap-5.components.table.row', 'livewire-tables::bs5.table.row');
+        Blade::component('livewire-tables::bootstrap-5.components.table.cell', 'livewire-tables::bs5.table.cell');
     }
 
-    public function consoleCommands()
+    /**
+     * @param Package $package
+     */
+    public function configurePackage(Package $package): void
     {
-        if ($this->app->runningInConsole()) {
-
-            $this->publishes([
-                __DIR__.'/../resources/lang' => $this->app->langPath('vendor/livewire-tables'),
-            ], 'livewire-tables-translations');
-
-            $this->publishes([
-                __DIR__.'/../config/livewire-tables.php' => config_path('livewire-tables.php'),
-            ], 'livewire-tables-config');
-
-            $this->publishes([
-                __DIR__.'/../resources/views' => resource_path('views/vendor/livewire-tables'),
-            ], 'livewire-tables-views');
-
-            $this->publishes([
-                __DIR__.'/../resources/js' => public_path('vendor/rappasoft/livewire-tables/js'),
-                __DIR__.'/../resources/css' => public_path('vendor/rappasoft/livewire-tables/css'),
-            ], 'livewire-tables-public');
-
-            $this->commands([
-                MakeCommand::class,
-            ]);
-        }
-    }
-
-    public function register(): void
-    {
-        $this->mergeConfigFrom(
-            __DIR__.'/../config/livewire-tables.php', 'livewire-tables'
-        );
-        if (config('livewire-tables.inject_core_assets_enabled') || config('livewire-tables.inject_third_party_assets_enabled') || config('livewire-tables.enable_blade_directives')) {
-            (new RappasoftFrontendAssets)->register();
-            ComponentHookRegistry::register(AutoInjectRappasoftAssets::class);
-        }
+        $package
+            ->name('laravel-livewire-tables')
+            ->hasConfigFile()
+            ->hasViews()
+            ->hasTranslations()
+            ->hasCommand(MakeCommand::class);
     }
 }
